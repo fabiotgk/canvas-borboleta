@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Canvas Borboleta — tapete de facilitação A3 do método Arquitetura Borboleta, com post-its digitais editáveis e impressão.">
+<title>Canvas Borboleta — tapete de facilitação</title>
+<style>
+  :root{
+    --paper:#F4F2EA;
+    --paper-2:#FBFAF4;
+    --ink:#1A1B1A;
+    --ink-2:#3C3D3B;
+    --ink-soft:#6E6F6B;
+    --ink-faint:#9A9B95;
+    --hair:#CFCCC0;
+    --hair-2:#B7B5A7;
+    --body:#1A1B1A;
+    --body-txt:#F7F5ED;
+    --pi-yellow:#FCE68A;
+    --pi-pink:#F7BFD0;
+    --pi-blue:#AFD6EC;
+    --pi-green:#BFE3B4;
+    --pi-white:#FBFAF4;
+    font-family:"Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;color:var(--ink);background:#E5E2D6;
+    background-image:radial-gradient(120% 90% at 50% 0%, #EEEBE0, #E2DFD3 72%);
+    line-height:1.45;-webkit-font-smoothing:antialiased;}
+  .serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif}
+
+  /* toolbar */
+  .toolbar{position:sticky;top:0;z-index:50;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+    padding:10px clamp(12px,3vw,28px);background:rgba(20,20,19,.94);color:#F4F2EA;
+    box-shadow:0 6px 22px -14px rgba(0,0,0,.6);backdrop-filter:blur(6px);}
+  .toolbar .brand{font-weight:700;letter-spacing:.16em;text-transform:uppercase;font-size:12px;margin-right:auto;display:flex;align-items:center;gap:9px}
+  .toolbar .brand small{font-weight:500;letter-spacing:.04em;text-transform:none;color:#B6B4A6;font-size:11.5px}
+  .tbtn{font:inherit;font-size:12px;font-weight:600;letter-spacing:.03em;color:#F4F2EA;
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);
+    padding:8px 13px;border-radius:6px;cursor:pointer;transition:.16s ease;display:inline-flex;align-items:center;gap:7px}
+  .tbtn:hover{background:rgba(255,255,255,.16)}
+  .tbtn:focus-visible{outline:2px solid var(--pi-yellow);outline-offset:2px}
+  .tbtn.primary{background:var(--pi-yellow);color:#1A1B1A;border-color:transparent;font-weight:700}
+  .tbtn.primary:hover{filter:brightness(1.05)}
+  .palette{display:flex;gap:6px;align-items:center;padding-left:4px}
+  .sw{width:20px;height:20px;border-radius:5px;border:2px solid rgba(255,255,255,.35);cursor:pointer;transition:.14s ease;padding:0}
+  .sw[aria-pressed="true"]{border-color:#fff;transform:scale(1.12);box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+  .sep{width:1px;height:22px;background:rgba(255,255,255,.18);margin:0 2px}
+
+  /* canvas — fit the whole A3 into the viewport (contain) */
+  .sheet{padding:12px clamp(12px,2vw,24px) 8px;display:flex;align-items:center;justify-content:center;
+    height:calc(100dvh - 58px);min-height:520px}
+  .canvas{position:relative;width:100%;max-width:1640px;max-height:100%;aspect-ratio:1420/1000;
+    background:var(--paper);
+    background-image:linear-gradient(0deg, rgba(0,0,0,.014) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,.014) 1px, transparent 1px);
+    background-size:28px 28px;
+    border:1px solid var(--hair-2);
+    box-shadow:0 30px 70px -40px rgba(0,0,0,.5), 0 2px 0 #fff inset;
+    overflow:hidden;touch-action:none;}
+  /* specimen corner keylines */
+  .canvas::before,.canvas::after{content:"";position:absolute;width:20px;height:20px;pointer-events:none;
+    border:1.4px solid var(--hair-2);opacity:.8}
+  .canvas::before{top:12px;left:12px;border-right:0;border-bottom:0}
+  .canvas::after{bottom:12px;right:12px;border-left:0;border-top:0}
+  svg.bg{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+  .layer{position:absolute;inset:0}
+
+  .wing{fill:none;stroke:var(--ink);stroke-width:1.5}
+  .vein{stroke:var(--ink);stroke-width:.7;fill:none;opacity:.18}
+  .zoneName{font-weight:700;letter-spacing:.2em;text-transform:uppercase;fill:var(--ink)}
+  .zoneTag{fill:var(--ink-soft);font-weight:600}
+  .kicker{fill:var(--ink-faint);font-weight:700;letter-spacing:.34em;text-transform:uppercase}
+  .chan{fill:var(--ink-soft);font-weight:600}
+  .chan-line{stroke:var(--ink);stroke-width:.8;stroke-dasharray:2 4;opacity:.28;fill:none}
+  .chan-node{fill:var(--ink)}
+  .fband-name{fill:var(--body-txt);font-weight:700;letter-spacing:.06em}
+  .fband-pct{fill:var(--body-txt);font-weight:600;font-variant-numeric:tabular-nums}
+  .ftitle{fill:var(--ink-faint);font-weight:700;letter-spacing:.28em;text-transform:uppercase}
+  .cli-ring{fill:var(--paper);stroke:var(--ink);stroke-width:2}
+  .cli-core{fill:var(--ink)}
+  .cli-lbl{fill:var(--ink);font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+  .footTitle{fill:var(--ink);font-weight:700;letter-spacing:-.01em;font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
+  .footSub{fill:var(--ink-soft);font-weight:600}
+  .footMid{fill:var(--ink-faint);font-weight:600;letter-spacing:.02em}
+  .footTip{fill:var(--ink-soft);font-weight:600}
+
+  /* ghost slots */
+  .slot{position:absolute;transform:translate(-50%,-50%);
+    border:1.4px dashed var(--hair-2);border-radius:8px;background:rgba(255,255,255,.28);
+    cursor:pointer;transition:border-color .15s, background .15s, box-shadow .15s;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+    padding:5px 6px;gap:2px;}
+  .slot:hover{border-color:var(--ink-soft);background:rgba(255,255,255,.6);box-shadow:0 4px 14px -8px rgba(0,0,0,.4)}
+  .slot .code{font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--ink-faint)}
+  .slot .lab{font-size:11px;font-weight:600;line-height:1.12;color:var(--ink-2)}
+  .slot .plus{font-size:14px;font-weight:300;color:var(--ink-faint);margin-top:1px;transition:.15s}
+  .slot:hover .plus{color:var(--ink-soft)}
+  .slot.filled{border-color:transparent;background:transparent;pointer-events:none;box-shadow:none}
+  .slot.filled>*{display:none}
+
+  /* post-its */
+  .note{position:absolute;transform:translate(-50%,-50%) rotate(var(--rot,-1.5deg));
+    width:120px;min-height:104px;padding:11px 11px 20px;
+    background:var(--pi-yellow);color:#26251c;font-size:13px;line-height:1.3;font-weight:500;
+    box-shadow:2px 5px 12px -4px rgba(0,0,0,.32);cursor:grab;touch-action:none;display:flex;flex-direction:column}
+  .note::after{content:"";position:absolute;left:0;bottom:0;width:22px;height:22px;
+    background:linear-gradient(135deg, transparent 50%, rgba(0,0,0,.07) 50%)}
+  .note.dragging{cursor:grabbing;box-shadow:5px 12px 26px -6px rgba(0,0,0,.42);z-index:30;
+    transform:translate(-50%,-50%) rotate(0deg) scale(1.03)}
+  .note .tag{font-size:8.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;opacity:.5;margin-bottom:4px;line-height:1.1}
+  .note .txt{flex:1;outline:none;overflow-wrap:anywhere}
+  .note .txt:empty::before{content:attr(data-ph);color:rgba(0,0,0,.3);font-style:italic}
+  .note .bar{position:absolute;top:-13px;left:50%;transform:translateX(-50%);
+    display:none;gap:4px;align-items:center;background:#1A1B1A;padding:4px 6px;border-radius:20px;
+    box-shadow:0 4px 12px -4px rgba(0,0,0,.5)}
+  .note:hover .bar,.note.editing .bar{display:flex}
+  .note .bar .c{width:13px;height:13px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);cursor:pointer;padding:0}
+  .note .bar .del{color:#fff;background:transparent;border:0;cursor:pointer;font-size:13px;line-height:1;padding:0 2px;opacity:.8}
+  .note .bar .del:hover{opacity:1}
+
+  .apphint{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
+    background:rgba(20,20,19,.9);color:#F4F2EA;font-size:12px;padding:9px 16px;border-radius:20px;
+    box-shadow:0 8px 24px -10px rgba(0,0,0,.6);z-index:40;transition:opacity .5s ease}
+
+  @media (prefers-reduced-motion: reduce){*{transition-duration:.001ms!important}}
+
+  @page{ size: A3 landscape; margin: 7mm }
+  @media print{
+    body{background:#fff}
+    .toolbar,.apphint{display:none!important}
+    .sheet{padding:0}
+    .canvas{box-shadow:none;border:1px solid #000;max-width:none;width:100%;background:#fff;background-image:none}
+    .slot{background:transparent}
+    .note{box-shadow:none;border:1px solid rgba(0,0,0,.25)}
+    .note .bar{display:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <span class="brand">Canvas Borboleta <small>· tapete de facilitação · A3</small></span>
+  <button class="tbtn primary" id="addBtn">+ Post-it</button>
+  <div class="palette" id="palette" aria-label="Cor do próximo post-it"></div>
+  <span class="sep"></span>
+  <button class="tbtn" id="printBtn">Imprimir A3</button>
+  <button class="tbtn" id="clearBtn">Limpar</button>
+</div>
+
+<div class="sheet">
+  <div class="canvas" id="canvas">
+    <svg class="bg" id="bg" viewBox="0 0 1420 1000" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+    <div class="layer" id="slots"></div>
+    <div class="layer" id="notes" style="pointer-events:none"></div>
+  </div>
+</div>
+
+<div class="apphint" id="hint">Clique num quadrinho para colar um post-it · arraste pra mover · duplo-clique edita</div>
+
+<script>
+(function(){
+  "use strict";
+  const NS="http://www.w3.org/2000/svg";
+  const VW=1420, VH=1000, CX=710, TH=560;
+  const svg=document.getElementById("bg");
+  const el=(n,a,t)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(t!=null)e.textContent=t;return e;};
+
+  const ZONES={
+    out:{name:"Outbound",tag:"Você vai até o cliente",side:-1,row:"top",
+      stages:[["O1","Geração de lista"],["O2","Prospecção ativa"],["O3","Conexão"],["O4","Engajamento"],["O5","Oportunidade"]]},
+    in:{name:"Inbound",tag:"O cliente vem até você",side:1,row:"top",
+      stages:[["I1","Alcance"],["I2","Atenção"],["I3","Interesse"],["I4","Desejo"],["I5","Ação"]]},
+    ret:{name:"Retenção",tag:"Entregar o valor prometido",side:-1,row:"bot",
+      stages:[["05","Diagnóstico"],["06","Rampagem"],["07","Dados"],["08","Consolidação"],["09","Tração"]]},
+    exp:{name:"Expansão",tag:"Crescer dentro da carteira",side:1,row:"bot",
+      stages:[["10","Resultado"],["11","Upsell"],["12","Cross-sell"],["13","Recompra"],["14","Indicação"]]}
+  };
+  const FUNNEL=[["Oportunidade",100],["Qualificação",64],["Apresentação",38],["Negociação",22]];
+  const CHAN_L=["Prospecção Ativa","Reativação de Carteira","Eventos & Indicações"];
+  const CHAN_R=["Conteúdo & SEO","Mídia Paga","Redes Sociais"];
+
+  const FORE=[[0,0],[44,-92],[72,-174],[140,-234],
+              [250,-282],[432,-286],[548,-246],
+              [634,-208],[640,-30],[512,10],
+              [356,34],[150,30],[34,6]];
+  const HIND=[[0,14],[44,78],[76,152],[142,208],
+              [250,254],[432,258],[548,218],
+              [630,180],[636,18],[510,-6],
+              [352,-2],[150,10],[0,14]];
+  const WSCALE=1.0;
+  function petal(pts,side){
+    const S=WSCALE, X=(o)=>CX+side*o*S, Y=(o)=>TH+o*S;
+    let d="M "+X(pts[0][0])+" "+Y(pts[0][1]);
+    for(let i=1;i<pts.length;i+=3){const a=pts[i],b=pts[i+1],c=pts[i+2];
+      d+=` C ${X(a[0])} ${Y(a[1])}, ${X(b[0])} ${Y(b[1])}, ${X(c[0])} ${Y(c[1])}`;}
+    return d+" Z";
+  }
+  // slot grid offsets from thorax (right side). index order matches stages 0..4
+  // layout: two inner (near center) + three outer, arranged as a clean cluster
+  const FORE_SLOTS=[ [190,-178],[336,-178],[482,-178], [268,-70],[404,-70] ];
+  const HIND_SLOTS=[ [268,70],[404,70], [190,178],[336,178],[482,178] ];
+  function slotCenter(zone,i){
+    const base=zone.row==="top"?FORE_SLOTS:HIND_SLOTS;const p=base[i];
+    return {x:CX+zone.side*p[0], y:TH+p[1]};
+  }
+
+  /* butterfly */
+  Object.values(ZONES).forEach(zone=>{
+    const pts=zone.row==="top"?FORE:HIND;
+    svg.appendChild(el("path",{class:"wing",d:petal(pts,zone.side)}));
+    // single graceful vein to wing tip
+    const tip = zone.row==="top" ? [372,-262] : [374,210];
+    svg.appendChild(el("path",{class:"vein",
+      d:`M ${CX} ${TH} Q ${CX+zone.side*tip[0]*.45} ${TH+tip[1]*.55} ${CX+zone.side*tip[0]*.9} ${TH+tip[1]*.9}`}));
+    const ny=zone.row==="top"?TH-296:TH+300, nx=CX+zone.side*334;
+    svg.appendChild(el("text",{class:"zoneName",x:nx,y:ny,"text-anchor":"middle","font-size":16},zone.name));
+    svg.appendChild(el("text",{class:"zoneTag",x:nx,y:ny+21,"text-anchor":"middle","font-size":11.5},zone.tag));
+  });
+
+  /* channels */
+  svg.appendChild(el("text",{class:"kicker",x:CX,y:42,"text-anchor":"middle","font-size":11},"Canais de Aquisição"));
+  function channels(list,side){
+    list.forEach((name,i)=>{
+      const px=side<0?(CX-548+i*150):(CX+248+i*150);
+      svg.appendChild(el("circle",{class:"chan-node",cx:px,cy:98,r:5}));
+      svg.appendChild(el("text",{class:"chan",x:px,y:82,"text-anchor":"middle","font-size":11},name));
+      svg.appendChild(el("path",{class:"chan-line",
+        d:`M ${px} ${106} C ${px} ${180}, ${CX+side*300} ${230}, ${CX+side*300} ${300}`}));
+    });
+  }
+  channels(CHAN_L,-1); channels(CHAN_R,1);
+
+  /* funnel */
+  const FTOP=286,FBOT=490,WTOP=216,WBOT=82,bands=4,gap=7;
+  const bandH=(FBOT-FTOP-gap*(bands-1))/bands;
+  const wAt=y=>WTOP-(y-FTOP)/(FBOT-FTOP)*(WTOP-WBOT);
+  svg.appendChild(el("text",{class:"ftitle",x:CX,y:FTOP-14,"text-anchor":"middle","font-size":10.5},"Funil de Vendas"));
+  FUNNEL.forEach((f,i)=>{
+    const yt=FTOP+i*(bandH+gap),yb=yt+bandH,wt=wAt(yt)/2,wb=wAt(yb)/2;
+    svg.appendChild(el("path",{fill:"var(--body)",
+      d:`M ${CX-wt} ${yt} L ${CX+wt} ${yt} L ${CX+wb} ${yb} L ${CX-wb} ${yb} Z`}));
+    svg.appendChild(el("text",{class:"fband-name",x:CX,y:yt+bandH/2-3,"text-anchor":"middle","font-size":10.5},f[0].toUpperCase()));
+    svg.appendChild(el("text",{class:"fband-pct",x:CX,y:yt+bandH/2+15,"text-anchor":"middle","font-size":14},f[1]+"%"));
+  });
+  svg.appendChild(el("path",{fill:"var(--body)",
+    d:`M ${CX-WBOT/2} ${FBOT} L ${CX+WBOT/2} ${FBOT} L ${CX+13} ${TH-16} L ${CX-13} ${TH-16} Z`}));
+  svg.appendChild(el("circle",{class:"cli-ring",cx:CX,cy:TH,r:27}));
+  svg.appendChild(el("circle",{class:"cli-core",cx:CX,cy:TH,r:13}));
+  svg.appendChild(el("text",{class:"cli-lbl",x:CX,y:TH+52,"text-anchor":"middle","font-size":11},"Cliente"));
+
+  /* printed footer — keeps the sheet self-explanatory on paper */
+  svg.appendChild(el("line",{x1:70,y1:912,x2:1350,y2:912,stroke:"var(--hair-2)","stroke-width":1}));
+  svg.appendChild(el("text",{class:"footTitle",x:70,y:944,"font-size":18},"Arquitetura Borboleta"));
+  svg.appendChild(el("text",{class:"footSub",x:70,y:964,"font-size":11},"Canvas de facilitação · imprima em A3 e preencha com post-its"));
+  svg.appendChild(el("text",{class:"footMid",x:CX,y:948,"text-anchor":"middle","font-size":11.5},
+    "6 canais  ·  Outbound + Inbound  ·  funil de vendas  ·  Retenção + Expansão  ·  1 cliente no centro"));
+  svg.appendChild(el("text",{class:"footTip",x:1350,y:940,"text-anchor":"end","font-size":11},"Uma etapa · um post-it"));
+  svg.appendChild(el("text",{class:"footTip",x:1350,y:958,"text-anchor":"end","font-size":11},"clique · escreva · arraste"));
+
+  /* ---------- post-it engine ---------- */
+  const canvas=document.getElementById("canvas");
+  const slotsLayer=document.getElementById("slots");
+  const notesLayer=document.getElementById("notes");
+  const COLORS={yellow:"var(--pi-yellow)",pink:"var(--pi-pink)",blue:"var(--pi-blue)",green:"var(--pi-green)",white:"var(--pi-white)"};
+  let curColor="yellow";
+  const SLOT_W=128, SLOT_H=92;
+  const pct=(v,tot)=>v/tot*100;
+
+  const pal=document.getElementById("palette");
+  Object.entries(COLORS).forEach(([k,v])=>{
+    const b=document.createElement("button");
+    b.className="sw";b.style.background=v;b.dataset.k=k;
+    b.setAttribute("aria-pressed",k===curColor?"true":"false");b.title="Cor";
+    b.addEventListener("click",()=>{curColor=k;
+      pal.querySelectorAll(".sw").forEach(s=>s.setAttribute("aria-pressed",s.dataset.k===k?"true":"false"));});
+    pal.appendChild(b);
+  });
+
+  const store=[];const KEY="borboleta.canvas.v2";
+  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}};
+  const load=()=>{try{JSON.parse(localStorage.getItem(KEY)||"[]").forEach(makeNote);}catch(e){}};
+
+  Object.entries(ZONES).forEach(([zk,zone])=>{
+    zone.stages.forEach((st,i)=>{
+      const c=slotCenter(zone,i);
+      const s=document.createElement("div");
+      s.className="slot";s.dataset.slot=zk+i;
+      s.style.left=pct(c.x,VW)+"%";s.style.top=pct(c.y,VH)+"%";
+      s.style.width=pct(SLOT_W,VW)+"%";s.style.height=pct(SLOT_H,VH)+"%";
+      s.innerHTML=`<span class="code">${st[0]}</span><span class="lab">${st[1]}</span><span class="plus">+</span>`;
+      s.addEventListener("click",()=>addNote({slot:zk+i,xp:pct(c.x,VW),yp:pct(c.y,VH),color:curColor,tag:st[0]+" · "+st[1],text:""}));
+      slotsLayer.appendChild(s);
+    });
+  });
+  const slotEl=id=>slotsLayer.querySelector('[data-slot="'+id+'"]');
+
+  let idc=1;
+  function addNote(o){o.id=o.id||("n"+(idc++)+"_"+store.length);store.push(o);makeNote(o);save();hideHint();}
+  function makeNote(o){
+    if(o.slot){const se=slotEl(o.slot);if(se)se.classList.add("filled");}
+    const n=document.createElement("div");
+    n.className="note";n.dataset.id=o.id;
+    n.style.left=o.xp+"%";n.style.top=o.yp+"%";
+    n.style.background=COLORS[o.color]||COLORS.yellow;
+    n.style.setProperty("--rot",(o.rot!=null?o.rot:(((o.id.length*7)%5)-2))+"deg");
+    n.style.pointerEvents="auto";
+    n.innerHTML=(o.tag?'<div class="tag">'+o.tag+'</div>':'')
+      +'<div class="txt" contenteditable="true" data-ph="escreva aqui…"></div>'
+      +'<div class="bar">'+Object.keys(COLORS).map(k=>'<button class="c" data-c="'+k+'" style="background:'+COLORS[k]+'"></button>').join('')
+      +'<button class="del" title="remover">✕</button></div>';
+    const txt=n.querySelector(".txt");txt.textContent=o.text||"";
+    txt.addEventListener("input",()=>{o.text=txt.textContent;save();});
+    txt.addEventListener("focus",()=>n.classList.add("editing"));
+    txt.addEventListener("blur",()=>n.classList.remove("editing"));
+    n.querySelectorAll(".bar .c").forEach(b=>b.addEventListener("click",e=>{
+      e.stopPropagation();o.color=b.dataset.c;n.style.background=COLORS[o.color];save();}));
+    n.querySelector(".del").addEventListener("click",e=>{
+      e.stopPropagation();const idx=store.indexOf(o);if(idx>=0)store.splice(idx,1);
+      if(o.slot){const se=slotEl(o.slot);if(se)se.classList.remove("filled");}n.remove();save();});
+    enableDrag(n,o,txt);
+    notesLayer.appendChild(n);return n;
+  }
+  function enableDrag(n,o,txt){
+    let sx,sy,ox,oy,moved,dragging=false;
+    n.addEventListener("pointerdown",e=>{
+      if(n.classList.contains("editing"))return;
+      if(e.target.closest(".bar"))return;
+      dragging=true;moved=false;
+      const r=canvas.getBoundingClientRect();
+      sx=e.clientX;sy=e.clientY;ox=o.xp;oy=o.yp;n._rw=r.width;n._rh=r.height;
+      n.setPointerCapture(e.pointerId);n.classList.add("dragging");
+    });
+    n.addEventListener("pointermove",e=>{
+      if(!dragging)return;
+      const dx=(e.clientX-sx)/n._rw*100,dy=(e.clientY-sy)/n._rh*100;
+      if(Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy)>3)moved=true;
+      o.xp=Math.max(2,Math.min(98,ox+dx));o.yp=Math.max(3,Math.min(97,oy+dy));
+      n.style.left=o.xp+"%";n.style.top=o.yp+"%";
+    });
+    const end=e=>{if(!dragging)return;dragging=false;n.classList.remove("dragging");
+      try{n.releasePointerCapture(e.pointerId);}catch(_){}if(moved)save();};
+    n.addEventListener("pointerup",end);n.addEventListener("pointercancel",end);
+    n.addEventListener("dblclick",()=>{txt.focus();
+      const rng=document.createRange();rng.selectNodeContents(txt);
+      const sel=getSelection();sel.removeAllRanges();sel.addRange(rng);});
+  }
+
+  document.getElementById("addBtn").addEventListener("click",()=>addNote({xp:50,yp:50,color:curColor,text:""}));
+  document.getElementById("printBtn").addEventListener("click",()=>window.print());
+  document.getElementById("clearBtn").addEventListener("click",()=>{
+    if(!store.length)return;
+    if(confirm("Remover todos os post-its do canvas?")){
+      store.length=0;notesLayer.innerHTML="";
+      slotsLayer.querySelectorAll(".slot.filled").forEach(s=>s.classList.remove("filled"));save();}
+  });
+
+  let hintT=setTimeout(hideHint,9000);
+  function hideHint(){const h=document.getElementById("hint");if(h)h.style.opacity="0";}
+  canvas.addEventListener("pointerdown",()=>clearTimeout(hintT),{once:true});
+  load();
+})();
+</script>
+
+</body>
+</html>

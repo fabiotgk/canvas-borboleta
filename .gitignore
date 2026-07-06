@@ -1,0 +1,7 @@
+# Material de referência do cliente — mantido só localmente, não publicar
+referencia/
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log
