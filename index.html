@@ -51,8 +51,9 @@
 
   /* canvas — fit the whole A3 into the viewport (contain) */
   .sheet{padding:12px clamp(12px,2vw,24px) 8px;display:flex;align-items:center;justify-content:center;
-    height:calc(100dvh - 58px);min-height:520px}
-  .canvas{position:relative;width:100%;max-width:1640px;max-height:100%;aspect-ratio:1420/1000;
+    min-height:calc(100dvh - 58px)}
+  /* width capped by available height so aspect-ratio (and SVG↔slot 1:1 mapping) never breaks */
+  .canvas{position:relative;width:min(100%, 1640px, calc((100dvh - 96px) * 1.42));aspect-ratio:1420/1000;
     background:var(--paper);
     background-image:linear-gradient(0deg, rgba(0,0,0,.014) 1px, transparent 1px),
       linear-gradient(90deg, rgba(0,0,0,.014) 1px, transparent 1px);
